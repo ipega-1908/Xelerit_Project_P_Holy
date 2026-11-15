@@ -246,7 +246,7 @@ def _extract_with_gemini(
 
 
 def extract_prices_from_image(payload: PriceExtractionRequest) -> PriceExtractionResponse:
-    """Extract fuel prices using Gemini API when configured, or offline demo simulation."""
+    """Extract fuel prices using Gemini API when configured, falling back to demo mode."""
     try:
         image_bytes = decode_and_validate_image_base64(payload.image_base64)
     except ValueError as exc:
@@ -257,7 +257,20 @@ def extract_prices_from_image(payload: PriceExtractionRequest) -> PriceExtractio
 
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if api_key:
-        result = _extract_with_gemini(image_bytes, payload.mime_type, api_key)
+        try:
+            result = _extract_with_gemini(image_bytes, payload.mime_type, api_key)
+        except HTTPException as exc:
+            # Keep the demo usable when a configured key is expired, rate-limited, or offline.
+            logger.warning("Gemini AI failed (%s); falling back to demo extraction", exc.detail)
+            demo_result = simulate_demo_extraction(image_bytes, payload.filename)
+            result = ExtractedPricesResult(
+                mode=demo_result.mode,
+                prices=demo_result.prices,
+                confidence_note=(
+                    "Gemini AI jest niedostępne lub przekroczono limit — "
+                    "użyto przykładowego odczytu (tryb demo)."
+                ),
+            )
     else:
         result = simulate_demo_extraction(image_bytes, payload.filename)
 

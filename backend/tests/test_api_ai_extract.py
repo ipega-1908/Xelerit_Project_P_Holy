@@ -228,3 +228,29 @@ def test_ai_extract_prices_gemini_falls_back_after_timeout(
     assert response.json()["prices"] == {"PB95": 6.29, "PB98": 6.99, "ON": 6.45, "LPG": 3.05}
     assert len(attempted_models) >= 2
     assert "gemini-flash-fallback" in response.json()["confidence_note"]
+
+
+def test_ai_extract_prices_falls_back_to_demo_when_gemini_errors(
+    client: TestClient, monkeypatch
+) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-fake-key")
+
+    def _fake_urlopen(req: urllib.request.Request, timeout: float = 0):
+        raise urllib.error.HTTPError(
+            req.full_url, 429, "Too Many Requests", hdrs=None, fp=io.BytesIO(b"quota exceeded")
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen)
+
+    sample_b64 = base64.b64encode(b"fake-jpeg-pylon-bytes").decode("ascii")
+    response = client.post(
+        "/ai/extract-prices",
+        json={"image_base64": sample_b64, "mime_type": "image/jpeg", "filename": "orlen.jpg"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mode"] == "demo"
+    assert "demo" in data["confidence_note"].lower()
+    assert set(data["prices"].keys()) == {"PB95", "PB98", "ON", "LPG"}
+    for price in data["prices"].values():
+        assert 3.00 <= price <= 15.00

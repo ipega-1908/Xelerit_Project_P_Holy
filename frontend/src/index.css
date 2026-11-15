@@ -1,0 +1,819 @@
+:root {
+  color-scheme: light;
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --border: #dfe4ec;
+  --text: #1a2233;
+  --muted: #5a6578;
+  --primary: #1d5bd6;
+  --primary-hover: #1749b0;
+  --green: #147d44;
+  --green-bg: #e7f6ed;
+  --red: #b92b27;
+  --red-bg: #fdeceb;
+  --amber: #996300;
+  --amber-bg: #fff5df;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.app-shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.65rem;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab-btn {
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
+}
+
+.calculator-panel h2 {
+  margin: 0 0 12px;
+  font-size: 1.15rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.form-field input,
+.form-field select,
+.stations-toolbar select,
+.new-report-form input,
+.new-report-form select,
+.inline-controls input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #ffffff;
+  color: var(--text);
+}
+
+.apps-selector {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.apps-label {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.apps-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 0.88rem;
+  user-select: none;
+}
+
+.app-chip-active {
+  background: #eaf1ff;
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.deals-section {
+  margin-top: 18px;
+}
+
+.reference-banner {
+  background: #eef3fb;
+  border: 1px solid #cddcf7;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 0.92rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.updating-pill {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.verdict-line {
+  font-size: 0.9rem;
+}
+
+.verdict-positive {
+  color: var(--green);
+}
+
+.verdict-neutral {
+  color: var(--text);
+}
+
+.verdict-hint {
+  font-size: 0.83rem;
+  color: var(--muted);
+}
+
+.deals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.deal-card.deal-profitable {
+  border-left: 4px solid var(--green);
+}
+
+.deal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.deal-header h3 {
+  margin: 4px 0 2px;
+  font-size: 1.1rem;
+}
+
+.rank-pill,
+.ref-pill {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
+.rank-pill {
+  background: #edf1f7;
+  color: var(--text);
+}
+
+.ref-pill {
+  background: #eaf1ff;
+  color: var(--primary);
+}
+
+.station-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.net-gain-box {
+  text-align: right;
+  min-width: 110px;
+}
+
+.net-gain-label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.gain-positive {
+  font-size: 1.25rem;
+  color: var(--green);
+}
+
+.gain-neutral {
+  font-size: 1.15rem;
+  color: var(--muted);
+}
+
+.deal-prices-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.price-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.price-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.price-value {
+  font-size: 1.1rem;
+}
+
+.price-effective {
+  color: var(--primary);
+}
+
+.calc-breakdown {
+  font-size: 0.84rem;
+  color: var(--text);
+}
+
+.benefit-line,
+.benefit-hint {
+  margin: 10px 0 0;
+  font-size: 0.86rem;
+}
+
+.benefit-line {
+  color: var(--green);
+}
+
+.benefit-hint {
+  color: var(--muted);
+}
+
+.deal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.status-verified {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.status-unconfirmed {
+  background: #eef1f6;
+  color: var(--muted);
+}
+
+.status-suspicious,
+.status-expired {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.status-unknown {
+  background: #f1f3f5;
+  color: var(--muted);
+}
+
+.vote-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-vote {
+  border-radius: 7px;
+  padding: 5px 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-confirm {
+  background: var(--green-bg);
+  color: var(--green);
+  border-color: #b7e3c9;
+}
+
+.btn-reject {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: #f4c2c0;
+}
+
+.btn {
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.86rem;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.btn-secondary {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.warning-banner {
+  margin: 10px 0 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--amber-bg);
+  color: var(--amber);
+  font-size: 0.85rem;
+}
+
+.field-error {
+  margin: 6px 0 0;
+  color: var(--red);
+  font-size: 0.85rem;
+}
+
+.inline-correction-form {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+}
+
+.inline-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.inline-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.stations-toolbar {
+  margin-bottom: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-heading {
+  margin: 0 0 2px;
+  font-size: 1.15rem;
+}
+
+.form-wrapper {
+  margin-bottom: 16px;
+}
+
+.entity-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.entity-form h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.entity-form-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.entity-form-header select {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 0.88rem;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.station-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.entity-actions,
+.confirm-delete-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn-xs {
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  border-radius: 6px;
+}
+
+.file-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.ai-prices-section {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-prices-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.prices-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.ai-note-banner {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #eaf1ff;
+  color: var(--primary);
+  font-size: 0.82rem;
+}
+
+.ai-review-panel {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-review-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.ai-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.extracted-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.benefits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.benefit-card h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.benefit-desc {
+  margin: 4px 0;
+  font-size: 0.88rem;
+}
+
+.location-picker-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.location-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.location-picker-box {
+  height: 240px;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.stations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 14px;
+}
+
+.station-card-header h3 {
+  margin: 0 0 4px;
+}
+
+.station-benefits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.benefit-tag {
+  font-size: 0.78rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f1f4f9;
+  color: var(--muted);
+}
+
+.benefit-tag-owned {
+  background: var(--green-bg);
+  color: var(--green);
+  font-weight: 600;
+}
+
+.fuel-rows {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fuel-row {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.fuel-row-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fuel-code {
+  font-weight: 700;
+  min-width: 48px;
+}
+
+.fuel-prices {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.app-price-inline {
+  font-size: 0.84rem;
+  color: var(--green);
+  font-weight: 600;
+}
+
+.station-add-price {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.add-price-title {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.new-report-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.state-box {
+  padding: 24px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+}
+
+.state-error {
+  border-color: #f4c2c0;
+  color: var(--red);
+}
+
+.map-card {
+  margin-top: 16px;
+}
+
+.map-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.map-header h3 {
+  margin: 0 0 2px;
+  font-size: 1rem;
+}
+
+.leaflet-container-box {
+  height: 340px;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.map-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.85rem;
+}
+
+.header-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-auth-wrapper {
+  position: relative;
+}
+
+.admin-auth-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-badge {
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.admin-login-card {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 1000;
+  min-width: 280px;
+  padding: 12px;
+}
+
+.admin-login-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-login-fields input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}

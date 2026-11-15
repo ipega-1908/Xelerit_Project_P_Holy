@@ -1,6 +1,8 @@
 import type {
   AdminLoginResponse,
   AdminSession,
+  AuthSession,
+  AuthTokenResponse,
   Benefit,
   BenefitPayload,
   CorrectionResult,
@@ -17,6 +19,7 @@ import type {
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const USER_ID_STORAGE_KEY = "fuel_deals_user_id";
 const ADMIN_TOKEN_STORAGE_KEY = "fuel_deals_admin_token";
+const USER_TOKEN_STORAGE_KEY = "fuel_deals_user_token";
 
 export function getAdminToken(): string | null {
   const token = window.sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
@@ -31,8 +34,26 @@ export function setAdminToken(token: string | null): void {
   }
 }
 
+export function getUserToken(): string | null {
+  const token = window.localStorage.getItem(USER_TOKEN_STORAGE_KEY);
+  return token && token.trim().length > 0 ? token : null;
+}
+
+export function setUserToken(token: string | null): void {
+  if (token) {
+    window.localStorage.setItem(USER_TOKEN_STORAGE_KEY, token);
+  } else {
+    window.localStorage.removeItem(USER_TOKEN_STORAGE_KEY);
+  }
+}
+
 function adminAuthHeaders(): Record<string, string> {
   const token = getAdminToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function activeSessionHeaders(): Record<string, string> {
+  const token = getAdminToken() ?? getUserToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -87,6 +108,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     if (response.status === 401 && headers.has("Authorization")) {
       setAdminToken(null);
+      setUserToken(null);
     }
     throw new ApiError(response.status, message);
   }
@@ -113,6 +135,7 @@ export const apiClient = {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
+    setUserToken(null);
     setAdminToken(result.access_token);
     return result;
   },
@@ -127,8 +150,41 @@ export const apiClient = {
     setAdminToken(null);
   },
 
+  async registerUser(username: string, password: string): Promise<AuthTokenResponse> {
+    const result = await request<AuthTokenResponse>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    setAdminToken(null);
+    setUserToken(result.access_token);
+    return result;
+  },
+
+  async loginUser(username: string, password: string): Promise<AuthTokenResponse> {
+    const result = await request<AuthTokenResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    setAdminToken(null);
+    setUserToken(result.access_token);
+    return result;
+  },
+
+  getUserSession(): Promise<AuthSession> {
+    const token = getUserToken();
+    return request<AuthSession>("/auth/session", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
+
+  userLogout(): void {
+    setUserToken(null);
+  },
+
   getStations(): Promise<Station[]> {
-    return request<Station[]>("/stations");
+    return request<Station[]>("/stations", {
+      headers: activeSessionHeaders(),
+    });
   },
 
   createStation(payload: StationPayload): Promise<Station> {
@@ -154,13 +210,15 @@ export const apiClient = {
   },
 
   getBenefits(): Promise<Benefit[]> {
-    return request<Benefit[]>("/benefits");
+    return request<Benefit[]>("/benefits", {
+      headers: activeSessionHeaders(),
+    });
   },
 
   createBenefit(payload: BenefitPayload): Promise<Benefit> {
     return request<Benefit>("/benefits", {
       method: "POST",
-      headers: adminAuthHeaders(),
+      headers: activeSessionHeaders(),
       body: JSON.stringify(payload),
     });
   },
@@ -168,7 +226,7 @@ export const apiClient = {
   updateBenefit(benefitId: number, payload: BenefitPayload): Promise<Benefit> {
     return request<Benefit>(`/benefits/${benefitId}`, {
       method: "PUT",
-      headers: adminAuthHeaders(),
+      headers: activeSessionHeaders(),
       body: JSON.stringify(payload),
     });
   },
@@ -176,7 +234,7 @@ export const apiClient = {
   deleteBenefit(benefitId: number): Promise<void> {
     return request<void>(`/benefits/${benefitId}`, {
       method: "DELETE",
-      headers: adminAuthHeaders(),
+      headers: activeSessionHeaders(),
     });
   },
 
@@ -239,6 +297,8 @@ export const apiClient = {
     for (const app of params.apps) {
       search.append("apps", app);
     }
-    return request<DealsResponse>(`/deals?${search.toString()}`);
+    return request<DealsResponse>(`/deals?${search.toString()}`, {
+      headers: activeSessionHeaders(),
+    });
   },
 };

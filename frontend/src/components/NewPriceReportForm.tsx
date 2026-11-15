@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { apiClient } from "../api/client";
 import { FUEL_OPTIONS } from "../constants/gdanskDistricts";
 import type { FuelType, InitialPriceEntry, ReportSource } from "../types/api";
-import { readImageFileAsBase64 } from "../utils/imageUpload";
+import { createSamplePylonImageBase64, readImageFileAsBase64 } from "../utils/imageUpload";
 
 interface NewPriceReportFormProps {
   stationId: number;
@@ -34,15 +34,12 @@ export function NewPriceReportForm({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const runExtraction = async (loadEncoded: () => Promise<{ base64: string; mimeType: string; filename: string }>) => {
     setError(null);
     setAiNote(null);
     setIsExtracting(true);
     try {
-      const encoded = await readImageFileAsBase64(file);
+      const encoded = await loadEncoded();
       const res = await apiClient.extractPricesFromImage(
         encoded.base64,
         encoded.mimeType,
@@ -64,6 +61,16 @@ export function NewPriceReportForm({
         fileInputRef.current.value = "";
       }
     }
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await runExtraction(() => readImageFileAsBase64(file));
+  };
+
+  const handleSamplePhotoDemo = async () => {
+    await runExtraction(async () => createSamplePylonImageBase64());
   };
 
   const handleManualSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -174,6 +181,15 @@ export function NewPriceReportForm({
           />
           {isExtracting ? "Analizuję..." : "📷 Ze zdjęcia (AI)"}
         </label>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => void handleSamplePhotoDemo()}
+          disabled={isSubmitting || isExtracting}
+          title="Wygeneruj przykładowy pylon i przetestuj odczyt cen ze zdjęcia"
+        >
+          Przykładowe zdjęcie (demo)
+        </button>
       </form>
 
       {aiNote && <p className="ai-note-banner">{aiNote}</p>}

@@ -119,4 +119,19 @@ Bieżący dziennik wykorzystania asystenta AI podczas pracy nad projektem.
 ## Krok 24: Aktualizacja `README.md` o instalację, `.env` i nowe funkcje
 - **O co poproszono:** Przygotowanie opisu instalacji i stanu projektu przed wysłaniem do repozytorium Git.
 - **Co wygenerował agent:** Aktualizację `README.md` (instrukcja konfiguracji `backend/.env`, logowania admina, wyboru lokalizacji na mapie, odczytu AI ze zdjęć oraz aktualne endpointy i wymagane ograniczenia dema).
-- **Zmiany właściciela:** Oczekuje na wskazanie docelowego repozytorium i wykonanie pierwszego commita / pusha.
+- **Zmiany właściciela:** Wypchnięto zmiany do repozytorium GitHub (`origin/main`).
+
+## Krok 25: Automatyczny fallback odczytu AI do trybu demo przy błędzie Gemini
+- **O co poproszono:** Zapewnienie działającego przykładowego odczytu ze zdjęcia także wtedy, gdy brakuje klucza `GEMINI_API_KEY` albo wywołanie Gemini API kończy się błędem/limitem.
+- **Co wygenerował agent:** Obsługę `HTTPException` w `extract_prices_from_image` (`backend/app/services/ai_extractor.py`) z logowaniem ostrzeżenia i powrotem do `simulate_demo_extraction` oraz test `test_ai_extract_prices_falls_back_to_demo_when_gemini_errors` w `backend/tests/test_api_ai_extract.py`.
+- **Zmiany właściciela:** Oczekuje na potwierdzenie przed kolejnym krokiem (konta użytkowników i prywatne rabaty).
+
+## Krok 26: Konta użytkowników (`demo`/`demo`) i prywatne rabaty po stronie backendu
+- **O co poproszono:** Dodanie konta użytkownika (w tym domyślnego `demo`/`demo` oraz rejestracji), które pozwala kierowcom dodawać, edytować i usuwać własne rabaty bez dostępu do administracyjnej edycji stacji i globalnych rabatów.
+- **Co wygenerował agent:** Hashowanie haseł PBKDF2-HMAC-SHA256 i role w tokenach (`domain/auth.py`), model `User` i `Benefit.owner_id` (`models.py`, `database.py`), endpointy `POST /auth/register`, `POST /auth/login`, `GET /auth/session` (`routers/auth.py`, `services/auth.py`), idempotentny seed konta `demo`/`demo` (`seed.py`), kontrolę własności rabatów oraz uwzględnianie prywatnych rabatów zalogowanego kierowcy w `/benefits`, `/stations` i `/deals`, a także testy jednostkowe i API (`test_domain_auth.py`, `test_api_auth_and_private_benefits.py`).
+- **Zmiany właściciela:** Poprosił o konto startowe `demo`/`demo` (hasło 4 znaki). Oczekuje na potwierdzenie przed Krokiem 27 (interfejs na frontendzie + przycisk przykładowego zdjęcia demo + README/push).
+
+## Krok 27: Frontend konta użytkownika, prywatnych rabatów i przykładowego zdjęcia demo + README
+- **O co poproszono:** Udostępnienie logowania/rejestracji kierowcy (z przyciskiem `demo`/`demo`), dodawania/edycji/usuwania własnych rabatów w UI, przycisku przykładowego zdjęcia do testu odczytu cen oraz aktualizacja `README.md`.
+- **Co wygenerował agent:** Komponent `UserAuthBar.tsx` (logowanie, rejestracja, szybki przycisk `demo/demo`), rozszerzenie `BenefitsView.tsx`, `api/client.ts`, `types/api.ts` i `App.tsx` o obsługę prywatnych rabatów i odświeżanie rankingu `/deals`, generator przykładowego pylonu `createSamplePylonImageBase64` (`utils/imageUpload.ts`) podpięty w `NewPriceReportForm.tsx` i `StationForm.tsx`, style w `index.css` oraz aktualizację `README.md`.
+- **Zmiany właściciela:** Oczekuje na weryfikację w przeglądarce i ewentualne wypchnięcie na GitHub.

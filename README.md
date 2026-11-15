@@ -2,6 +2,8 @@
 
 Aplikacja webowa pomagająca kierowcom w Gdańsku porównać ceny paliw (ze słupka oraz po uwzględnieniu rabatów z aplikacji sieciowych) i obliczyć, czy objazd na tańszą stację rzeczywiście się opłaca.
 
+- **Nagranie działania aplikacji:** [nagranie_demo.mp4](nagranie_demo.mp4)
+
 ## Główne funkcje
 
 - **Społecznościowe zgłoszenia i weryfikacja cen:**
@@ -22,10 +24,11 @@ Aplikacja webowa pomagająca kierowcom w Gdańsku porównać ceny paliw (ze słu
     - `savings = liters * (usual_price - cheaper_price)`
     - `net_gain = savings - detour_cost`
     - `min_liters = detour_cost / price_difference` (minimalna liczba litrów, od której objazd się opłaca)
-- **Dodawanie stacji z mapy, masowy odczyt AI ze zdjęcia oraz panel admina:**
+- **Dodawanie stacji z mapy, masowy odczyt AI ze zdjęcia oraz konta użytkowników i admina:**
   - Każdy użytkownik może dodać nową stację wskazując jej lokalizację kliknięciem na mapie Leaflet, zgłaszać ceny oraz głosować (`✓` / `✕`).
-  - Wrzucenie zdjęcia słupka/pylonu (`POST /ai/extract-prices`) uzupełnia wszystkie odczytane paliwa (`PB95`, `PB98`, `ON`, `LPG`) w edytowalnych polach z zapisem jednym kliknięciem. Bez klucza `GEMINI_API_KEY` działa deterministyczny tryb demo offline; z kluczem w `.env` backend korzysta z modeli Gemini Flash.
-  - Edycja i usuwanie stacji oraz dodawanie/edycja/usuwanie rabatów wymagają zalogowania jako administrator (`POST /admin/login`, dane w `backend/.env`).
+  - Wrzucenie zdjęcia słupka/pylonu lub kliknięcie **„Przykładowe zdjęcie (demo)”** (`POST /ai/extract-prices`) uzupełnia wszystkie odczytane paliwa (`PB95`, `PB98`, `ON`, `LPG`) w edytowalnych polach z zapisem jednym kliknięciem. Bez klucza `GEMINI_API_KEY` (oraz w razie błędu/limitu Gemini API) backend automatycznie działa w trybie demo offline.
+  - **Konto użytkownika (`POST /auth/register`, `POST /auth/login`):** kierowcy mogą zalogować się na konto testowe **`demo` / `demo`** lub założyć własne konto, aby dodawać, edytować i usuwać własne prywatne rabaty widoczne wyłącznie dla nich i uwzględniane w kalkulatorze `/deals`.
+  - Edycja i usuwanie stacji oraz zarządzanie globalnymi rabatami wymagają zalogowania jako administrator (`POST /admin/login`, dane w `backend/.env`).
 
 ## Architektura
 
@@ -35,7 +38,7 @@ backend/
     domain/          # Czyste funkcje domenowe (zero zależności od FastAPI, SQLModel, DB i zegara)
     routers/         # Cienka warstwa HTTP (parsowanie żądań, wywołanie serwisu, odpowiedź)
     services/        # Logika aplikacyjna, sesje bazodanowe, integracja AI, autoryzacja admina
-    models.py        # Tabele SQLModel (Station, PriceReport, PriceVote, Benefit)
+    models.py        # Tabele SQLModel (Station, PriceReport, PriceVote, Benefit, User)
     schemas.py       # Schematy Pydantic wejścia/wyjścia API
     database.py      # Konfiguracja SQLite (PRAGMA foreign_keys=ON)
     env.py           # Lekki loader zmiennych z lokalnego pliku .env
@@ -56,7 +59,7 @@ docs/
 
 ## Dane startowe (Seed)
 
-Przy pierwszym uruchomieniu backend automatycznie zasila bazę listą **14 stacji paliw z różnych dzielnic Gdańska** (Orlen, BP, Circle K, Shell, Moya, Auchan). **Wszystkie ceny paliw oraz rabaty w danych startowych są przykładowe** (służą wyłącznie do demonstracji kalkulatora i weryfikacji cen, nie są pobierane z zewnętrznych źródeł).
+Przy pierwszym uruchomieniu backend automatycznie zasila bazę listą **14 stacji paliw z różnych dzielnic Gdańska** (Orlen, BP, Circle K, Shell, Moya, Auchan) oraz zakłada testowe konto kierowcy **`demo` / `demo`**. **Wszystkie ceny paliw oraz rabaty w danych startowych są przykładowe** (służą wyłącznie do demonstracji kalkulatora i weryfikacji cen, nie są pobierane z zewnętrznych źródeł).
 
 ## Instalacja i uruchomienie lokalnie
 
@@ -119,17 +122,18 @@ Po zbudowaniu kontenerów frontend działa na `http://localhost:5173`, a backend
 - `GET/POST /stations/{id}/price-reports`
 - `POST /price-reports/{id}/confirmations`
 - `POST /price-reports/{id}/corrections`
-- `GET /benefits`, `GET /benefits/{id}`, `POST/PUT/DELETE /benefits/{id}` *(zapis/usuwanie: admin)*
+- `GET /benefits`, `GET /benefits/{id}`, `POST/PUT/DELETE /benefits/{id}` *(globalne: admin; prywatne: zalogowany właściciel)*
 - `GET /deals?lat&lon&fuel&liters&consumption&apps`
 - `POST /ai/extract-prices`
+- `POST /auth/register`, `POST /auth/login`, `GET /auth/session`
 - `POST /admin/login`, `GET /admin/session`
 
-Endpointy zapisujące zgłoszenia i głosy wymagają nagłówka `X-User-Id` (UUID generowanego w przeglądarce). Operacje administracyjne wymagają nagłówka `Authorization: Bearer <token>`.
+Endpointy zapisujące zgłoszenia i głosy używają nagłówka `X-User-Id` (UUID generowanego w przeglądarce). Zarządzanie rabatami i operacje administracyjne wymagają nagłówka `Authorization: Bearer <token>`.
 
 ## Ograniczenia demo i dalszy rozwój
 
 - **Brak prawdziwej geolokalizacji:** punkt startu użytkownik wybiera ręcznie z listy dzielnic Gdańska lub kliknięciem na mapie Leaflet (bez użycia Geolocation API).
-- **Brak kont kierowców (`X-User-Id`):** identyfikator `X-User-Id` generuje przeglądarka w `localStorage`, więc pojedynczy użytkownik może nadużywać głosowania po wyczyszczeniu pamięci przeglądarki; logowanie dotyczy wyłącznie prostego konta admina z `.env`.
+- **Uproszczona tożsamość głosujących (`X-User-Id`):** głosy potwierdzenia/odrzucenia cen nadal opierają się na `X-User-Id` z `localStorage`, więc pojedynczy użytkownik może nadużywać głosowania po wyczyszczeniu pamięci przeglądarki; konta z hasłem służą na ten moment do zarządzania własnymi rabatami (a konto z `.env` do administracji).
 - **Przykładowe dane:** ceny paliw oraz warunki rabatów z aplikacji sieci są przykładowe i nie aktualizują się automatycznie.
 - **Uproszczony model odległości:** dystans liczony jest jako `haversine * 1,3`, a nie na podstawie rzeczywistej sieci drogowej i natężenia ruchu.
 - **Stały próg odchylenia (1,00 zł):** próg oznaczania ceny jako podejrzanej nie skaluje się proporcjonalnie z poziomem cen (np. dla LPG jest relatywnie luźny w porównaniu do PB98).
@@ -137,4 +141,9 @@ Endpointy zapisujące zgłoszenia i głosy wymagają nagłówka `X-User-Id` (UUI
 
 ## Praca z AI
 
-Projekt powstał iteracyjnie, w małych krokach kontrolowanych testami jednostkowymi i integracyjnymi. Szczegółowy zapis decyzji, kompromisów oraz podziału pracy znajduje się w [docs/AI_LOG.md](docs/AI_LOG.md).
+Projekt powstał iteracyjnie w małych krokach przy wsparciu asystenta AI (Antigravity / Gemini) sterowanego dedykowanymi regułami w [GEMINI.md](GEMINI.md). AI wykorzystałem m.in. do:
+- wygenerowania szkieletu API (FastAPI + SQLModel) i komponentów UI (React + TypeScript),
+- przygotowania testów jednostkowych czystej domeny (`pytest` dla konsensusu, reguł czasowych `Europe/Warsaw` i kalkulatora objazdu) oraz testów integracyjnych endpointów,
+- iteracyjnego dodania mapy Leaflet, integracji odczytu cen ze zdjęć z trybem fallback demo oraz mechanizmu kont użytkowników i prywatnych rabatów.
+
+Każdy krok był weryfikowany testami (`pytest`, `ruff`, `tsc --noEmit`), a szczegółowy dziennik decyzji, zmian kontraktu i poprawek znajduje się w [docs/AI_LOG.md](docs/AI_LOG.md).

@@ -8,6 +8,7 @@ interface BenefitsViewProps {
   isLoading: boolean;
   error: string | null;
   isAdmin: boolean;
+  isUserAuthenticated: boolean;
   onRetry: () => void;
   onCreateBenefit: (payload: BenefitPayload) => Promise<void>;
   onUpdateBenefit: (benefitId: number, payload: BenefitPayload) => Promise<void>;
@@ -19,6 +20,7 @@ export function BenefitsView({
   isLoading,
   error,
   isAdmin,
+  isUserAuthenticated,
   onRetry,
   onCreateBenefit,
   onUpdateBenefit,
@@ -29,6 +31,16 @@ export function BenefitsView({
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const canCreate = isAdmin || isUserAuthenticated;
+
+  const canModifyBenefit = (benefit: Benefit): boolean => {
+    const isGlobal = benefit.owner_id === null || benefit.owner_id === undefined;
+    if (isAdmin) {
+      return isGlobal;
+    }
+    return isUserAuthenticated && Boolean(benefit.is_own);
+  };
 
   const handleDelete = async (benefitId: number) => {
     setActionError(null);
@@ -49,22 +61,25 @@ export function BenefitsView({
         <div>
           <h2 className="section-heading">Rabaty z aplikacji sieci</h2>
           <p className="station-meta">
-            Reguły czasowe liczone są w strefie Europe/Warsaw i automatycznie brane pod uwagę w
-            kalkulatorze.
+            {canCreate
+              ? isAdmin
+                ? "Jako administrator zarządzasz globalnymi rabatami sieciowymi."
+                : "Jako zalogowany kierowca możesz dodawać, edytować i usuwać własne rabaty."
+              : "Zaloguj się w nagłówku (np. demo / demo), aby dodawać i zmieniać własne rabaty."}
           </p>
         </div>
-        {isAdmin && (
+        {canCreate && (
           <button
             type="button"
             className="btn btn-primary"
             onClick={() => setShowCreateForm((prev) => !prev)}
           >
-            {showCreateForm ? "Zamknij formularz" : "+ Dodaj rabat"}
+            {showCreateForm ? "Zamknij formularz" : "+ Dodaj własny rabat"}
           </button>
         )}
       </div>
 
-      {isAdmin && showCreateForm && (
+      {canCreate && showCreateForm && (
         <div className="form-wrapper">
           <BenefitForm
             onSave={async (payload) => {
@@ -91,8 +106,9 @@ export function BenefitsView({
         <div className="state-box">Brak skonfigurowanych rabatów. Dodaj pierwszą regułę.</div>
       ) : (
         <div className="benefits-list">
-          {benefits.map((benefit) =>
-            isAdmin && editingId === benefit.id ? (
+          {benefits.map((benefit) => {
+            const canModify = canModifyBenefit(benefit);
+            return canModify && editingId === benefit.id ? (
               <BenefitForm
                 key={benefit.id}
                 initialBenefit={benefit}
@@ -107,7 +123,12 @@ export function BenefitsView({
                 <div className="station-card-header">
                   <div>
                     <h3>
-                      {benefit.app_name} <span className="rank-pill">{benefit.brand}</span>
+                      {benefit.app_name} <span className="rank-pill">{benefit.brand}</span>{" "}
+                      {benefit.is_own ? (
+                        <span className="benefit-scope-badge benefit-scope-own">Twój rabat</span>
+                      ) : (
+                        <span className="benefit-scope-badge">Globalny</span>
+                      )}
                     </h3>
                     <p className="station-meta">
                       {formatBenefitConditions(benefit)} · Paliwo:{" "}
@@ -120,7 +141,7 @@ export function BenefitsView({
                     </p>
                   </div>
 
-                  {isAdmin && (
+                  {canModify && (
                     <div className="entity-actions">
                       <button
                         type="button"
@@ -163,8 +184,8 @@ export function BenefitsView({
                   )}
                 </div>
               </article>
-            ),
-          )}
+            );
+          })}
         </div>
       )}
     </section>

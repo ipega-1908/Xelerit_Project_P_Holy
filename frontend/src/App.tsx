@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError, apiClient, getAdminToken } from "./api/client";
+import { ApiError, apiClient, getAdminToken, getUserToken } from "./api/client";
 import { AdminAuthBar } from "./components/AdminAuthBar";
 import { BenefitsView } from "./components/BenefitsView";
 import { CalculatorPanel } from "./components/CalculatorPanel";
@@ -7,9 +7,11 @@ import { DealsRankingList } from "./components/DealsRankingList";
 import { GdanskMap } from "./components/GdanskMap";
 import { StationCard } from "./components/StationCard";
 import { StationForm } from "./components/StationForm";
+import { UserAuthBar } from "./components/UserAuthBar";
 import { GDANSK_DISTRICTS, LOYALTY_APPS } from "./constants/gdanskDistricts";
 import { useUserProfile } from "./hooks/useUserProfile";
 import type {
+  AuthSession,
   Benefit,
   BenefitPayload,
   DealsResponse,
@@ -38,16 +40,35 @@ export function App() {
   const [benefitsLoading, setBenefitsLoading] = useState<boolean>(true);
   const [benefitsError, setBenefitsError] = useState<string | null>(null);
   const [adminUsername, setAdminUsername] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthSession | null>(null);
 
   useEffect(() => {
-    if (!getAdminToken()) return;
-    apiClient
-      .getAdminSession()
-      .then((session) => setAdminUsername(session.username))
-      .catch(() => {
-        apiClient.adminLogout();
-        setAdminUsername(null);
-      });
+    if (getAdminToken()) {
+      apiClient
+        .getAdminSession()
+        .then((session) => setAdminUsername(session.username))
+        .catch(() => {
+          apiClient.adminLogout();
+          setAdminUsername(null);
+        });
+      return;
+    }
+
+    if (getUserToken()) {
+      apiClient
+        .getUserSession()
+        .then((session) => {
+          if (session.role === "user") {
+            setCurrentUser(session);
+          } else {
+            apiClient.userLogout();
+          }
+        })
+        .catch(() => {
+          apiClient.userLogout();
+          setCurrentUser(null);
+        });
+    }
   }, []);
 
   const [customStartCoords, setCustomStartCoords] = useState<{ lat: number; lon: number } | null>(
@@ -167,7 +188,7 @@ export function App() {
     [refreshAll],
   );
 
-  const runAdminAction = useCallback(
+  const runAuthAction = useCallback(
     async (action: () => Promise<void>) => {
       try {
         await action();
@@ -175,6 +196,7 @@ export function App() {
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
           setAdminUsername(null);
+          setCurrentUser(null);
         }
         throw err;
       }
@@ -182,49 +204,86 @@ export function App() {
     [refreshAll],
   );
 
-  const handleAdminLogin = useCallback(async (username: string, password: string) => {
-    const res = await apiClient.adminLogin(username, password);
-    setAdminUsername(res.username);
-  }, []);
+  const handleAdminLogin = useCallback(
+    async (username: string, password: string) => {
+      const res = await apiClient.adminLogin(username, password);
+      setCurrentUser(null);
+      setAdminUsername(res.username);
+      await refreshAll();
+    },
+    [refreshAll],
+  );
 
   const handleAdminLogout = useCallback(() => {
     apiClient.adminLogout();
     setAdminUsername(null);
-  }, []);
+    void refreshAll();
+  }, [refreshAll]);
+
+  const handleUserLogin = useCallback(
+    async (username: string, password: string) => {
+      const res = await apiClient.loginUser(username, password);
+      setAdminUsername(null);
+      setCurrentUser({ username: res.username, role: res.role, user_id: res.user_id });
+      await refreshAll();
+    },
+    [refreshAll],
+  );
+
+  const handleUserRegister = useCallback(
+    async (username: string, password: string) => {
+      const res = await apiClient.registerUser(username, password);
+      setAdminUsername(null);
+      setCurrentUser({ username: res.username, role: res.role, user_id: res.user_id });
+      await refreshAll();
+    },
+    [refreshAll],
+  );
+
+  const handleUserLogout = useCallback(() => {
+    apiClient.userLogout();
+    setCurrentUser(null);
+    void refreshAll();
+  }, [refreshAll]);
 
   const handleUpdateStation = useCallback(
     async (stationId: number, payload: StationPayload) => {
-      await runAdminAction(() => apiClient.updateStation(stationId, payload).then(() => undefined));
+      await runAuthAction(() => apiClient.updateStation(stationId, payload).then(() => undefined));
     },
-    [runAdminAction],
+    [runAuthAction],
   );
 
   const handleDeleteStation = useCallback(
     async (stationId: number) => {
-      await runAdminAction(() => apiClient.deleteStation(stationId));
+      await runAuthAction(() => apiClient.deleteStation(stationId));
     },
-    [runAdminAction],
+    [runAuthAction],
   );
 
   const handleCreateBenefit = useCallback(
     async (payload: BenefitPayload) => {
-      await runAdminAction(() => apiClient.createBenefit(payload).then(() => undefined));
+      await runAuthAction(async () => {
+        const created = await apiClient.createBenefit(payload);
+        if (!profile.apps.includes(created.app_name)) {
+          updateProfile({ apps: [...profile.apps, created.app_name] });
+        }
+      });
     },
-    [runAdminAction],
+    [runAuthAction, profile.apps, updateProfile],
   );
 
   const handleUpdateBenefit = useCallback(
     async (benefitId: number, payload: BenefitPayload) => {
-      await runAdminAction(() => apiClient.updateBenefit(benefitId, payload).then(() => undefined));
+      await runAuthAction(() => apiClient.updateBenefit(benefitId, payload).then(() => undefined));
     },
-    [runAdminAction],
+    [runAuthAction],
   );
 
   const handleDeleteBenefit = useCallback(
     async (benefitId: number) => {
-      await runAdminAction(() => apiClient.deleteBenefit(benefitId));
+      await runAuthAction(() => apiClient.deleteBenefit(benefitId));
     },
-    [runAdminAction],
+    [runAuthAction],
   );
 
   const availableAppNames = useMemo(() => {
@@ -283,11 +342,22 @@ export function App() {
             </button>
           </nav>
 
-          <AdminAuthBar
-            adminUsername={adminUsername}
-            onLogin={handleAdminLogin}
-            onLogout={handleAdminLogout}
-          />
+          {adminUsername === null && (
+            <UserAuthBar
+              currentUser={currentUser}
+              onLogin={handleUserLogin}
+              onRegister={handleUserRegister}
+              onLogout={handleUserLogout}
+            />
+          )}
+
+          {currentUser === null && (
+            <AdminAuthBar
+              adminUsername={adminUsername}
+              onLogin={handleAdminLogin}
+              onLogout={handleAdminLogout}
+            />
+          )}
         </div>
       </header>
 
@@ -401,6 +471,7 @@ export function App() {
             isLoading={benefitsLoading}
             error={benefitsError}
             isAdmin={adminUsername !== null}
+            isUserAuthenticated={currentUser !== null}
             onRetry={() => void fetchBenefits()}
             onCreateBenefit={handleCreateBenefit}
             onUpdateBenefit={handleUpdateBenefit}

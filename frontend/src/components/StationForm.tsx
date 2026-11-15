@@ -8,7 +8,7 @@ import type {
   Station,
   StationPayload,
 } from "../types/api";
-import { readImageFileAsBase64 } from "../utils/imageUpload";
+import { createSamplePylonImageBase64, readImageFileAsBase64 } from "../utils/imageUpload";
 import { LocationPickerMap } from "./LocationPickerMap";
 
 interface StationFormProps {
@@ -56,15 +56,14 @@ export function StationForm({ initialStation, onSave, onCancel }: StationFormPro
     setLongitude(found.longitude);
   };
 
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const runPhotoExtraction = async (
+    loadEncoded: () => Promise<{ base64: string; mimeType: string; filename: string }>,
+  ) => {
     setError(null);
     setAiNote(null);
     setIsExtracting(true);
     try {
-      const encoded = await readImageFileAsBase64(file);
+      const encoded = await loadEncoded();
       const extracted = await apiClient.extractPricesFromImage(
         encoded.base64,
         encoded.mimeType,
@@ -86,6 +85,16 @@ export function StationForm({ initialStation, onSave, onCancel }: StationFormPro
         fileInputRef.current.value = "";
       }
     }
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await runPhotoExtraction(() => readImageFileAsBase64(file));
+  };
+
+  const handleSamplePhotoDemo = async () => {
+    await runPhotoExtraction(async () => createSamplePylonImageBase64());
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -220,17 +229,27 @@ export function StationForm({ initialStation, onSave, onCancel }: StationFormPro
         <div className="ai-prices-section">
           <div className="ai-prices-header">
             <span>Ceny początkowe na stacji (opcjonalne):</span>
-            <label className="btn btn-secondary btn-sm file-upload-btn">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
+            <div className="ai-upload-actions">
+              <label className="btn btn-secondary btn-sm file-upload-btn">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  disabled={isExtracting || isSubmitting}
+                  hidden
+                />
+                {isExtracting ? "Analizuję zdjęcie..." : "📷 Odczytaj ceny ze zdjęcia (AI)"}
+              </label>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => void handleSamplePhotoDemo()}
                 disabled={isExtracting || isSubmitting}
-                hidden
-              />
-              {isExtracting ? "Analizuję zdjęcie..." : "📷 Odczytaj ceny ze zdjęcia (AI)"}
-            </label>
+              >
+                Przykładowe zdjęcie (demo)
+              </button>
+            </div>
           </div>
 
           {aiNote && <p className="ai-note-banner">{aiNote}</p>}

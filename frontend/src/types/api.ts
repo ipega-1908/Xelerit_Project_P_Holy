@@ -16,6 +16,8 @@ export type PriceStatus =
 
 export interface Benefit {
   id: number;
+  owner_id?: number | null;
+  is_own?: boolean;
   brand: string;
   app_name: string;
   fuel_type: FuelType | null;
@@ -167,4 +169,18 @@ export interface AdminLoginResponse {
 export interface AdminSession {
   username: string;
   is_admin: boolean;
+}
+
+export type AuthRole = "user" | "admin";
+
+export interface AuthSession {
+  username: string;
+  role: AuthRole;
+  user_id: number | null;
+}
+
+export interface AuthTokenResponse extends AuthSession {
+  access_token: string;
+  token_type: "bearer";
+  expires_at: string;
 }

@@ -49,6 +49,8 @@ class BenefitUpdate(BenefitBase):
 
 class BenefitRead(BaseModel):
     id: int
+    owner_id: int | None = None
+    is_own: bool = False
     brand: str
     app_name: str
     fuel_type: FuelTypeLiteral | None
@@ -194,3 +196,28 @@ class AdminLoginResponse(BaseModel):
 class AdminSessionRead(BaseModel):
     username: str
     is_admin: bool
+
+
+class UserRegisterRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=60, pattern=r"^[a-zA-Z0-9_.-]+$")
+    password: str = Field(min_length=4, max_length=128)
+
+
+class UserLoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=60)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class AuthTokenResponse(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    username: str
+    role: Literal["user", "admin"]
+    user_id: int | None = None
+    expires_at: datetime
+
+
+class AuthSessionRead(BaseModel):
+    username: str
+    role: Literal["user", "admin"]
+    user_id: int | None = None

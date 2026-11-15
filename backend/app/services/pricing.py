@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from sqlmodel import Session, or_, select
+
 from app.domain.benefits import BenefitRule, ensure_utc, is_benefit_active
 from app.domain.consensus import (
     COMPARISON_RADIUS_KM,
@@ -51,11 +53,13 @@ def benefit_to_rule(benefit: Benefit) -> BenefitRule:
     )
 
 
-def benefit_to_read(benefit: Benefit) -> BenefitRead:
+def benefit_to_read(benefit: Benefit, viewer_user_id: int | None = None) -> BenefitRead:
     """Map Benefit DB model to API response schema."""
     assert benefit.id is not None
     return BenefitRead(
         id=benefit.id,
+        owner_id=benefit.owner_id,
+        is_own=(viewer_user_id is not None and benefit.owner_id == viewer_user_id),
         brand=benefit.brand,
         app_name=benefit.app_name,
         fuel_type=benefit.fuel_type,  # type: ignore[arg-type]
@@ -69,6 +73,17 @@ def benefit_to_read(benefit: Benefit) -> BenefitRead:
         checked_at=ensure_utc(benefit.checked_at),
         description=benefit.description,
     )
+
+
+def list_visible_benefits(session: Session, viewer_user_id: int | None) -> list[Benefit]:
+    """Return global benefits plus private benefits belonging to the signed-in user."""
+    if viewer_user_id is None:
+        stmt = select(Benefit).where(Benefit.owner_id.is_(None))  # type: ignore[union-attr]
+    else:
+        stmt = select(Benefit).where(
+            or_(Benefit.owner_id.is_(None), Benefit.owner_id == viewer_user_id)  # type: ignore[union-attr]
+        )
+    return list(session.exec(stmt.order_by(Benefit.brand, Benefit.id)).all())
 
 
 def _to_report_record(report: PriceReport) -> ReportRecord:
@@ -189,6 +204,7 @@ def get_active_benefits_for_brand(
     benefits: list[Benefit],
     brand: str,
     now: datetime,
+    viewer_user_id: int | None = None,
 ) -> list[BenefitRead]:
     """Return currently active BenefitRead items for a given station brand."""
     normalized = brand.strip().lower()
@@ -197,5 +213,5 @@ def get_active_benefits_for_brand(
         if benefit.brand.strip().lower() != normalized:
             continue
         if is_benefit_active(benefit_to_rule(benefit), now):
-            active.append(benefit_to_read(benefit))
+            active.append(benefit_to_read(benefit, viewer_user_id=viewer_user_id))
     return active

@@ -2,8 +2,9 @@ from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session, select
 
+from app.domain.auth import hash_password
 from app.domain.consensus import VoteType
-from app.models import Benefit, PriceReport, PriceVote, Station
+from app.models import Benefit, PriceReport, PriceVote, Station, User
 
 SEED_STATIONS: list[dict[str, object]] = [
     {
@@ -139,13 +140,28 @@ _SAMPLE_PRICES: list[dict[str, float]] = [
 ]
 
 
+def _ensure_demo_user(session: Session, now: datetime) -> None:
+    """Create default demo driver account (demo/demo) if not present yet."""
+    existing_user = session.exec(select(User).where(User.username == "demo")).first()
+    if existing_user is None:
+        session.add(
+            User(
+                username="demo",
+                password_hash=hash_password("demo"),
+                created_at=now,
+            )
+        )
+        session.commit()
+
+
 def seed_database(session: Session, now: datetime | None = None) -> bool:
     """Populate Gdansk stations, sample prices, votes, and app benefits if DB is empty."""
+    base_now = now if now is not None else datetime.now(UTC)
+    _ensure_demo_user(session, base_now)
+
     existing = session.exec(select(Station)).first()
     if existing is not None:
         return False
-
-    base_now = now if now is not None else datetime.now(UTC)
 
     stations: list[Station] = []
     for item in SEED_STATIONS:

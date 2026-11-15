@@ -48,10 +48,20 @@ class PriceVote(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class User(SQLModel, table=True):
+    """Registered driver account used to manage private loyalty discounts."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    username: str = Field(index=True, unique=True)
+    password_hash: str
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class Benefit(SQLModel, table=True):
     """Loyalty app discount rule with explicit validity range and verification timestamp."""
 
     id: int | None = Field(default=None, primary_key=True)
+    owner_id: int | None = Field(default=None, foreign_key="user.id", index=True)
     brand: str = Field(index=True)
     app_name: str
     fuel_type: str | None = Field(default=None, index=True)

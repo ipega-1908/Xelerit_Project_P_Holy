@@ -8,7 +8,7 @@ from sqlmodel import Session
 
 from app.database import create_db_and_tables, engine
 from app.env import load_default_env_files
-from app.routers import admin, ai, benefits, deals, price_reports, stations
+from app.routers import admin, ai, auth, benefits, deals, price_reports, stations
 from app.seed import seed_database
 
 
@@ -53,6 +53,7 @@ def create_app(*, enable_lifespan: bool = True) -> FastAPI:
     app.include_router(deals.router)
     app.include_router(ai.router)
     app.include_router(admin.router)
+    app.include_router(auth.router)
 
     return app
 

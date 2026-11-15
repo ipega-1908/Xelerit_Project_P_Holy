@@ -5,10 +5,11 @@ from sqlmodel import Session, delete, select
 
 from app.domain.benefits import ensure_utc
 from app.domain.consensus import SUPPORTED_FUEL_TYPES
-from app.models import Benefit, PriceReport, PriceVote, Station
+from app.models import PriceReport, PriceVote, Station
 from app.schemas import FuelTypeLiteral, StationCreate, StationRead, StationUpdate
 from app.services.pricing import (
     get_active_benefits_for_brand,
+    list_visible_benefits,
     resolution_to_summary,
     resolve_all_station_prices,
 )
@@ -18,6 +19,7 @@ def _build_station_reads(
     stations: list[Station],
     session: Session,
     now: datetime,
+    viewer_user_id: int | None = None,
 ) -> list[StationRead]:
     if not stations:
         return []
@@ -25,7 +27,7 @@ def _build_station_reads(
     all_stations = list(session.exec(select(Station)).all())
     all_reports = list(session.exec(select(PriceReport)).all())
     all_votes = list(session.exec(select(PriceVote)).all())
-    all_benefits = list(session.exec(select(Benefit)).all())
+    all_benefits = list_visible_benefits(session, viewer_user_id)
 
     resolutions = resolve_all_station_prices(all_stations, all_reports, all_votes, now)
 
@@ -47,24 +49,38 @@ def _build_station_reads(
                 longitude=station.longitude,
                 created_at=ensure_utc(station.created_at),
                 prices=prices,  # type: ignore[arg-type]
-                active_benefits=get_active_benefits_for_brand(all_benefits, station.brand, now),
+                active_benefits=get_active_benefits_for_brand(
+                    all_benefits,
+                    station.brand,
+                    now,
+                    viewer_user_id=viewer_user_id,
+                ),
             )
         )
     return results
 
 
-def list_stations(session: Session, now: datetime) -> list[StationRead]:
+def list_stations(
+    session: Session,
+    now: datetime,
+    viewer_user_id: int | None = None,
+) -> list[StationRead]:
     """List all stations with resolved current prices and active brand benefits."""
     stations = list(session.exec(select(Station).order_by(Station.name)).all())
-    return _build_station_reads(stations, session, now)
+    return _build_station_reads(stations, session, now, viewer_user_id=viewer_user_id)
 
 
-def get_station(station_id: int, session: Session, now: datetime) -> StationRead:
+def get_station(
+    station_id: int,
+    session: Session,
+    now: datetime,
+    viewer_user_id: int | None = None,
+) -> StationRead:
     """Fetch a single station by ID or raise 404."""
     station = session.get(Station, station_id)
     if station is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Station not found")
-    return _build_station_reads([station], session, now)[0]
+    return _build_station_reads([station], session, now, viewer_user_id=viewer_user_id)[0]
 
 
 def create_station(payload: StationCreate, session: Session, now: datetime) -> StationRead:

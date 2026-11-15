@@ -34,13 +34,20 @@ def create_db_and_tables(target_engine: Engine = engine) -> None:
     SQLModel.metadata.create_all(target_engine)
     if target_engine.dialect.name == "sqlite":
         with target_engine.begin() as conn:
-            columns = {row[1] for row in conn.execute(text("PRAGMA table_info(pricereport)"))}
-            if "source" not in columns:
+            report_columns = {
+                row[1] for row in conn.execute(text("PRAGMA table_info(pricereport)"))
+            }
+            if "source" not in report_columns:
                 conn.execute(
                     text(
                         "ALTER TABLE pricereport "
                         "ADD COLUMN source VARCHAR NOT NULL DEFAULT 'manual'"
                     )
+                )
+            benefit_columns = {row[1] for row in conn.execute(text("PRAGMA table_info(benefit)"))}
+            if "owner_id" not in benefit_columns:
+                conn.execute(
+                    text("ALTER TABLE benefit ADD COLUMN owner_id INTEGER REFERENCES user(id)")
                 )
 
 

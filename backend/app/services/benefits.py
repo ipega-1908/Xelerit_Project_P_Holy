@@ -1,31 +1,73 @@
 from datetime import datetime
 
 from fastapi import HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import Session
 
+from app.domain.auth import AuthActor
 from app.domain.benefits import ensure_utc
 from app.models import Benefit
 from app.schemas import BenefitCreate, BenefitRead, BenefitUpdate
-from app.services.pricing import benefit_to_read, serialize_weekdays
+from app.services.pricing import benefit_to_read, list_visible_benefits, serialize_weekdays
 
 
-def list_benefits(session: Session) -> list[BenefitRead]:
-    """Return all configured loyalty app benefits."""
-    benefits = list(session.exec(select(Benefit).order_by(Benefit.brand, Benefit.id)).all())
-    return [benefit_to_read(b) for b in benefits]
+def _viewer_user_id(actor: AuthActor | None) -> int | None:
+    if actor is None or actor.role != "user":
+        return None
+    return actor.user_id
 
 
-def get_benefit(benefit_id: int, session: Session) -> BenefitRead:
-    """Fetch a single benefit by ID or raise 404."""
+def _ensure_can_modify(benefit: Benefit, actor: AuthActor) -> None:
+    """Enforce ownership: admins manage global benefits; users manage only their own."""
+    if actor.role == "admin":
+        if benefit.owner_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Administrator zarządza wyłącznie globalnymi rabatami",
+            )
+        return
+
+    if benefit.owner_id != actor.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Możesz edytować i usuwać tylko własne rabaty",
+        )
+
+
+def list_benefits(session: Session, actor: AuthActor | None = None) -> list[BenefitRead]:
+    """Return global benefits plus private benefits owned by the signed-in user."""
+    viewer_id = _viewer_user_id(actor)
+    benefits = list_visible_benefits(session, viewer_id)
+    return [benefit_to_read(b, viewer_user_id=viewer_id) for b in benefits]
+
+
+def get_benefit(
+    benefit_id: int,
+    session: Session,
+    actor: AuthActor | None = None,
+) -> BenefitRead:
+    """Fetch a single visible benefit by ID or raise 403/404."""
     benefit = session.get(Benefit, benefit_id)
     if benefit is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Benefit not found")
-    return benefit_to_read(benefit)
+    viewer_id = _viewer_user_id(actor)
+    if benefit.owner_id is not None and benefit.owner_id != viewer_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Brak dostępu do prywatnego rabatu innego użytkownika",
+        )
+    return benefit_to_read(benefit, viewer_user_id=viewer_id)
 
 
-def create_benefit(payload: BenefitCreate, session: Session, now: datetime) -> BenefitRead:
-    """Create a loyalty app benefit with server-assigned checked_at timestamp."""
+def create_benefit(
+    payload: BenefitCreate,
+    session: Session,
+    now: datetime,
+    actor: AuthActor,
+) -> BenefitRead:
+    """Create a global (admin) or private (user) benefit with server checked_at."""
+    owner_id = actor.user_id if actor.role == "user" else None
     benefit = Benefit(
+        owner_id=owner_id,
         brand=payload.brand.strip(),
         app_name=payload.app_name.strip(),
         fuel_type=payload.fuel_type,
@@ -42,7 +84,7 @@ def create_benefit(payload: BenefitCreate, session: Session, now: datetime) -> B
     session.add(benefit)
     session.commit()
     session.refresh(benefit)
-    return benefit_to_read(benefit)
+    return benefit_to_read(benefit, viewer_user_id=_viewer_user_id(actor))
 
 
 def update_benefit(
@@ -50,11 +92,13 @@ def update_benefit(
     payload: BenefitUpdate,
     session: Session,
     now: datetime,
+    actor: AuthActor,
 ) -> BenefitRead:
-    """Update an existing benefit and refresh checked_at to server time, or raise 404."""
+    """Update an existing benefit owned by the caller and refresh checked_at."""
     benefit = session.get(Benefit, benefit_id)
     if benefit is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Benefit not found")
+    _ensure_can_modify(benefit, actor)
 
     benefit.brand = payload.brand.strip()
     benefit.app_name = payload.app_name.strip()
@@ -72,13 +116,14 @@ def update_benefit(
     session.add(benefit)
     session.commit()
     session.refresh(benefit)
-    return benefit_to_read(benefit)
+    return benefit_to_read(benefit, viewer_user_id=_viewer_user_id(actor))
 
 
-def delete_benefit(benefit_id: int, session: Session) -> None:
-    """Delete a benefit by ID or raise 404."""
+def delete_benefit(benefit_id: int, session: Session, actor: AuthActor) -> None:
+    """Delete an existing benefit owned by the caller or raise 403/404."""
     benefit = session.get(Benefit, benefit_id)
     if benefit is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Benefit not found")
+    _ensure_can_modify(benefit, actor)
     session.delete(benefit)
     session.commit()

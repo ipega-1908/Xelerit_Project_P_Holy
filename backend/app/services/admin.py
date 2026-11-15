@@ -23,7 +23,7 @@ def _get_configured_credentials() -> tuple[str, str]:
     return username, password
 
 
-def _get_signing_secret() -> str:
+def get_signing_secret() -> str:
     return os.getenv("ADMIN_SESSION_SECRET", "").strip() or _PROCESS_SIGNING_SECRET
 
 
@@ -42,7 +42,7 @@ def login_admin(payload: AdminLoginRequest, now: datetime) -> AdminLoginResponse
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token, expires_at = create_admin_token(expected_username, _get_signing_secret(), now=now)
+    token, expires_at = create_admin_token(expected_username, get_signing_secret(), now=now)
     return AdminLoginResponse(
         access_token=token,
         username=expected_username,
@@ -61,10 +61,15 @@ def verify_admin_bearer(authorization: str | None, now: datetime) -> str:
 
     token = authorization[7:].strip()
     try:
-        return verify_admin_token(token, _get_signing_secret(), now=now)
+        return verify_admin_token(token, get_signing_secret(), now=now)
     except ValueError as exc:
+        status_code = (
+            status.HTTP_403_FORBIDDEN
+            if str(exc) == "Admin role required"
+            else status.HTTP_401_UNAUTHORIZED
+        )
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status_code,
             detail=str(exc),
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc

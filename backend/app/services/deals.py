@@ -6,11 +6,12 @@ from app.domain.benefits import ensure_utc, select_best_benefit
 from app.domain.calculator import calculate_discount_amount, evaluate_detour
 from app.domain.consensus import SUPPORTED_FUEL_TYPES, PriceStatus
 from app.domain.distance import calculate_extra_km, estimated_road_distance_km
-from app.models import Benefit, PriceReport, PriceVote, Station
+from app.models import PriceReport, PriceVote, Station
 from app.schemas import DealItemRead, DealsResponse, FuelTypeLiteral, StationRead
 from app.services.pricing import (
     benefit_to_rule,
     get_active_benefits_for_brand,
+    list_visible_benefits,
     resolution_to_summary,
     resolve_all_station_prices,
 )
@@ -49,12 +50,13 @@ def calculate_deals(
     user_apps: list[str],
     session: Session,
     now: datetime,
+    viewer_user_id: int | None = None,
 ) -> DealsResponse:
     """Rank fuel stations by detour net gain relative to the nearest station with fuel price."""
     stations = list(session.exec(select(Station)).all())
     reports = list(session.exec(select(PriceReport)).all())
     votes = list(session.exec(select(PriceVote)).all())
-    benefits = list(session.exec(select(Benefit)).all())
+    benefits = list_visible_benefits(session, viewer_user_id)
 
     resolutions = resolve_all_station_prices(stations, reports, votes, now)
     benefit_rules = [benefit_to_rule(b) for b in benefits]
@@ -134,7 +136,12 @@ def calculate_deals(
             max_liters=max_liters,
         )
 
-        active_benefits = get_active_benefits_for_brand(benefits, station.brand, now)
+        active_benefits = get_active_benefits_for_brand(
+            benefits,
+            station.brand,
+            now,
+            viewer_user_id=viewer_user_id,
+        )
         applied_benefit_read = None
         if best_benefit is not None and best_benefit.benefit_id in benefit_by_id:
             applied_benefit_read = next(
